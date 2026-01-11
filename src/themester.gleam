@@ -1,5 +1,6 @@
 import gleam/int
 import lustre
+import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
@@ -11,31 +12,46 @@ pub fn main() -> Nil {
   Nil
 }
 
-type Model =
-  Int
+type Model {
+  Model(
+    base0: String,
+    base7: String,
+  )
+}
 
 fn init(_args) -> Model {
-  0
+  Model(
+    base0: "#141312",
+    base7: "#dddddd",
+  )
 }
 
 type Msg {
-  Increment
-  Decrement
 }
 
-fn update(model: Model, msg: Msg) {
-  case msg {
-    Increment -> model + 1
-    Decrement -> model - 1
-  }
+fn update(model: Model, _msg: Msg) {
+  model
+  // case msg {
+  //   Increment -> model + 1
+  //   Decrement -> model - 1
+  // }
 }
 
 fn view(model: Model) -> Element(Msg) {
-  let count = int.to_string(model)
+  let base0 = model.base0
+  let base7 = model.base7
 
-  html.div([], [
-    html.button([event.on_click(Increment)], [html.text("+")]),
-    html.p([], [html.text(count)]),
-    html.button([event.on_click(Decrement)], [html.text("-")]),
-  ])
+  html.div(
+    [
+      attribute.styles([
+        #("width", "100vw"),
+        #("height", "100vw"),
+        #("background-color", base0),
+        #("color", base7),
+      ])
+    ], 
+    [
+      html.p([], [html.text(base0)]),
+    ]
+  )
 }
