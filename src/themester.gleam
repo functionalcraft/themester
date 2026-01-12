@@ -45,7 +45,7 @@ fn view(model: Model) -> Element(Msg) {
     [
       attribute.styles([
         #("width", "100vw"),
-        #("height", "100vw"),
+        #("height", "100vh"),
         #("background-color", base0),
         #("color", base7),
       ])
