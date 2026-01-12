@@ -13,17 +13,11 @@ pub fn main() -> Nil {
 }
 
 type Model {
-  Model(
-    base0: String,
-    base7: String,
-  )
+  Model(base0: String, base7: String)
 }
 
 fn init(_args) -> Model {
-  Model(
-    base0: "#141312",
-    base7: "#dddddd",
-  )
+  Model(base0: "#141312", base7: "#dddddd")
 }
 
 type Msg {
@@ -50,8 +44,8 @@ fn view(model: Model) -> Element(Msg) {
         #("display", "flex"),
         #("background-color", base0),
         #("color", base7),
-      ])
-    ], 
+      ]),
+    ],
     [
       html.div(
         [
@@ -60,7 +54,7 @@ fn view(model: Model) -> Element(Msg) {
             #("flex-grow", "1"),
           ]),
         ],
-        []
+        [],
       ),
       html.form(
         [
@@ -82,8 +76,8 @@ fn view(model: Model) -> Element(Msg) {
             attribute.value(base7),
             event.on_input(SetBase7),
           ]),
-        ]
+        ],
       ),
-    ]
+    ],
   )
 }
