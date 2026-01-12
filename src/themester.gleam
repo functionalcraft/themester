@@ -27,14 +27,15 @@ fn init(_args) -> Model {
 }
 
 type Msg {
+  SetBase0(String)
+  SetBase7(String)
 }
 
-fn update(model: Model, _msg: Msg) {
-  model
-  // case msg {
-  //   Increment -> model + 1
-  //   Decrement -> model - 1
-  // }
+fn update(model: Model, msg: Msg) {
+  case msg {
+    SetBase0(val) -> Model(..model, base0: val)
+    SetBase7(val) -> Model(..model, base7: val)
+  }
 }
 
 fn view(model: Model) -> Element(Msg) {
@@ -46,12 +47,43 @@ fn view(model: Model) -> Element(Msg) {
       attribute.styles([
         #("width", "100vw"),
         #("height", "100vh"),
+        #("display", "flex"),
         #("background-color", base0),
         #("color", base7),
       ])
     ], 
     [
-      html.p([], [html.text(base0)]),
+      html.div(
+        [
+          attribute.styles([
+            #("padding", "1rem"),
+            #("flex-grow", "1"),
+          ]),
+        ],
+        []
+      ),
+      html.form(
+        [
+          attribute.styles([
+            #("padding", "1rem"),
+            #("flex-grow", "0"),
+            #("display", "flex"),
+            #("flex-direction", "column"),
+          ]),
+        ],
+        [
+          html.label([], [html.text("Background")]),
+          html.input([
+            attribute.value(base0),
+            event.on_input(SetBase0),
+          ]),
+          html.label([], [html.text("Text")]),
+          html.input([
+            attribute.value(base7),
+            event.on_input(SetBase7),
+          ]),
+        ]
+      ),
     ]
   )
 }
