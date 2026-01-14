@@ -29,14 +29,13 @@ type ColorState {
     l: String,
     a: String,
     b: String,
-    valid_rgb: Bool
+    valid_rgb: Bool,
   )
 }
 
 type Model {
   Model(base0: ColorState, base7: String)
 }
-
 
 fn init(_args) -> Model {
   let base0_lab = ColorLab(10.0, 0.0, 0.0)
@@ -46,19 +45,17 @@ fn init(_args) -> Model {
     _ -> #(ColorRgb(10, 10, 10), False)
   }
 
-  let base0 = ColorState(
-    lab: base0_lab,
-    rgb: base0_rgb,
-    valid_rgb: valid_rgb,
-    l: float.to_string(base0_lab.l),
-    a: float.to_string(base0_lab.a),
-    b: float.to_string(base0_lab.b),
-  )
+  let base0 =
+    ColorState(
+      lab: base0_lab,
+      rgb: base0_rgb,
+      valid_rgb: valid_rgb,
+      l: float.to_string(base0_lab.l),
+      a: float.to_string(base0_lab.a),
+      b: float.to_string(base0_lab.b),
+    )
 
-  Model(
-    base0: base0,
-    base7: "#dddddd",
-  )
+  Model(base0: base0, base7: "#dddddd")
 }
 
 type Msg {
@@ -87,7 +84,7 @@ fn update(model: Model, msg: Msg) {
           rgb: base0_rgb,
           valid_rgb: valid_rgb,
           l: val,
-        )
+        ),
       )
     }
 
@@ -108,7 +105,7 @@ fn update(model: Model, msg: Msg) {
           rgb: base0_rgb,
           valid_rgb: valid_rgb,
           a: val,
-        )
+        ),
       )
     }
 
@@ -129,7 +126,7 @@ fn update(model: Model, msg: Msg) {
           rgb: base0_rgb,
           valid_rgb: valid_rgb,
           b: val,
-        )
+        ),
       )
     }
 
@@ -184,7 +181,7 @@ fn view(model: Model) -> Element(Msg) {
               attribute.styles([
                 #("display", "flex"),
               ]),
-            ], 
+            ],
             [
               html.label([], [html.text("L*")]),
               html.input([
@@ -201,7 +198,7 @@ fn view(model: Model) -> Element(Msg) {
                 attribute.value(base0.b),
                 event.on_input(SetBase0B),
               ]),
-            ]
+            ],
           ),
           html.label([], [html.text("Text")]),
           html.input([
