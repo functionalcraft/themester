@@ -1,5 +1,4 @@
 import gleam/float
-import gleam/int
 
 pub type Lab {
   Lab(l: Float, a: Float, b: Float)
