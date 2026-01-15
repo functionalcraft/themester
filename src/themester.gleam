@@ -1,7 +1,10 @@
 import components/lab_picker
-import data/color.{type Lab, type Rgb}
+import data/color
+import gleam/dynamic/decode
 import gleam/float
 import gleam/int
+import gleam/io
+import gleam/json
 import gleam/string
 import lustre
 import lustre/attribute
@@ -20,14 +23,7 @@ pub fn main() -> Nil {
 }
 
 type ColorState {
-  ColorState(
-    lab: color.Lab,
-    rgb: color.Rgb,
-    l: String,
-    a: String,
-    b: String,
-    valid_rgb: Bool,
-  )
+  ColorState(lab: color.Lab, rgb: color.Rgb, valid_rgb: Bool)
 }
 
 type Model {
@@ -42,98 +38,67 @@ fn init(_args) -> Model {
     _ -> #(color.Rgb(10, 10, 10), False)
   }
 
-  let base0 =
-    ColorState(
-      lab: base0_lab,
-      rgb: base0_rgb,
-      valid_rgb: valid_rgb,
-      l: float.to_string(base0_lab.l),
-      a: float.to_string(base0_lab.a),
-      b: float.to_string(base0_lab.b),
-    )
+  let base0 = ColorState(lab: base0_lab, rgb: base0_rgb, valid_rgb: valid_rgb)
 
   Model(base0: base0, base7: "#dddddd")
 }
 
 type Msg {
-  SetBase0L(String)
-  SetBase0A(String)
-  SetBase0B(String)
+  SetBase0Lab(color.Lab)
   SetBase7(String)
 }
 
 fn update(model: Model, msg: Msg) {
   case msg {
-    SetBase0L(val) -> {
-      let base0_lab = case parse_float_permissive(val) {
-        Ok(v) -> color.Lab(..model.base0.lab, l: v)
-        _ -> model.base0.lab
-      }
+    SetBase0Lab(base0_lab) -> {
+      io.println(
+        "Parent: Received SetBase0Lab with L="
+        <> float.to_string(base0_lab.l)
+        <> " a="
+        <> float.to_string(base0_lab.a)
+        <> " b="
+        <> float.to_string(base0_lab.b),
+      )
       let #(base0_rgb, valid_rgb) = case color.lab_to_rgb(base0_lab) {
-        Ok(c) -> #(c, True)
-        _ -> #(model.base0.rgb, False)
+        Ok(c) -> {
+          io.println(
+            "Parent: Lab to RGB conversion succeeded: #"
+            <> int.to_base16(c.r)
+            <> int.to_base16(c.g)
+            <> int.to_base16(c.b),
+          )
+          #(c, True)
+        }
+        _ -> {
+          io.println("Parent: Lab to RGB conversion failed")
+          #(model.base0.rgb, False)
+        }
       }
       Model(
         ..model,
-        base0: ColorState(
-          ..model.base0,
-          lab: base0_lab,
-          rgb: base0_rgb,
-          valid_rgb: valid_rgb,
-          l: val,
-        ),
+        base0: ColorState(lab: base0_lab, rgb: base0_rgb, valid_rgb: valid_rgb),
       )
     }
 
-    SetBase0A(val) -> {
-      let base0_lab = case parse_float_permissive(val) {
-        Ok(v) -> color.Lab(..model.base0.lab, a: v)
-        _ -> model.base0.lab
-      }
-      let #(base0_rgb, valid_rgb) = case color.lab_to_rgb(base0_lab) {
-        Ok(c) -> #(c, True)
-        _ -> #(model.base0.rgb, False)
-      }
-      Model(
-        ..model,
-        base0: ColorState(
-          ..model.base0,
-          lab: base0_lab,
-          rgb: base0_rgb,
-          valid_rgb: valid_rgb,
-          a: val,
-        ),
-      )
+    SetBase7(val) -> {
+      io.println("Parent: Setting base7 to " <> val)
+      Model(..model, base7: val)
     }
-
-    SetBase0B(val) -> {
-      let base0_lab = case parse_float_permissive(val) {
-        Ok(v) -> color.Lab(..model.base0.lab, b: v)
-        _ -> model.base0.lab
-      }
-      let #(base0_rgb, valid_rgb) = case color.lab_to_rgb(base0_lab) {
-        Ok(c) -> #(c, True)
-        _ -> #(model.base0.rgb, False)
-      }
-      Model(
-        ..model,
-        base0: ColorState(
-          ..model.base0,
-          lab: base0_lab,
-          rgb: base0_rgb,
-          valid_rgb: valid_rgb,
-          b: val,
-        ),
-      )
-    }
-
-    SetBase7(val) -> Model(..model, base7: val)
   }
 }
 
 fn view(model: Model) -> Element(Msg) {
   let base0 = model.base0
   let base7 = model.base7
+
+  io.println(
+    "Parent view: Rendering with base0.lab L="
+    <> float.to_string(base0.lab.l)
+    <> " a="
+    <> float.to_string(base0.lab.a)
+    <> " b="
+    <> float.to_string(base0.lab.b),
+  )
 
   html.div(
     [
@@ -173,37 +138,30 @@ fn view(model: Model) -> Element(Msg) {
               False -> "*)"
             }),
           ]),
-          html.div(
-            [
-              attribute.styles([
-                #("display", "flex"),
+          lab_picker.element([
+            attribute.property(
+              "value",
+              json.object([
+                #("l", json.float(base0.lab.l)),
+                #("a", json.float(base0.lab.a)),
+                #("b", json.float(base0.lab.b)),
               ]),
-            ],
-            [
-              html.label([], [html.text("L*")]),
-              html.input([
-                attribute.value(base0.l),
-                event.on_input(SetBase0L),
-              ]),
-              html.label([], [html.text("a*")]),
-              html.input([
-                attribute.value(base0.a),
-                event.on_input(SetBase0A),
-              ]),
-              html.label([], [html.text("b*")]),
-              html.input([
-                attribute.value(base0.b),
-                event.on_input(SetBase0B),
-              ]),
-            ],
-          ),
+            ),
+            event.on("change", {
+              use c <- decode.field("detail", {
+                use l <- decode.field("l", decode.float)
+                use a <- decode.field("a", decode.float)
+                use b <- decode.field("b", decode.float)
+                decode.success(color.Lab(l: l, a: a, b: b))
+              })
+              decode.success(SetBase0Lab(c))
+            }),
+          ]),
           html.label([], [html.text("Text")]),
           html.input([
             attribute.value(base7),
             event.on_input(SetBase7),
           ]),
-          html.label([], [html.text("Foo")]),
-          lab_picker.element([]),
         ],
       ),
     ],
@@ -226,13 +184,5 @@ fn hex_byte(x: Int) -> String {
     1 -> string.concat(["0", s])
     2 -> s
     _ -> "FF"
-  }
-}
-
-fn parse_float_permissive(s: String) -> Result(Float, Nil) {
-  case float.parse(s), int.parse(s) {
-    Ok(v), _ -> Ok(v)
-    _, Ok(v) -> Ok(int.to_float(v))
-    _, _ -> Error(Nil)
   }
 }
