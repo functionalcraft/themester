@@ -10,6 +10,7 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 
+  /* Palette variables, these are overwritten by the app during initialization */
   --base0: #111111;
   --base1: #2c2c2c;
   --base2: #484848;
@@ -19,6 +20,7 @@
   --base6: #cdcdcd;
   --base7: #f1f1f1;
 
+  /* Semantic variables */
   --background: var(--base0);
   --surface: var(--base1);
   --content: var(--base7);

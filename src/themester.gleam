@@ -37,12 +37,18 @@ type Model {
 fn init(_args) -> #(Model, Effect(Msg)) {
   let base0 = color_state(color.Lab(10.0, 0.0, 0.0))
   let base1 = color_state(color.Lab(20.0, 0.0, 0.0))
-
   let base7 = color_state(color.Lab(90.0, 0.0, 0.0))
 
   let model = Model(base0: base0, base1: base1, base7: base7)
 
-  #(model, effect.none())
+  let eff =
+    effect.from(fn(_) {
+      let _ = set_root_style_property("--base0", rgb_hex(base0.rgb))
+      let _ = set_root_style_property("--base1", rgb_hex(base1.rgb))
+      set_root_style_property("--base7", rgb_hex(base7.rgb))
+    })
+
+  #(model, eff)
 }
 
 fn color_state(lab: color.Lab) -> ColorState {
@@ -107,9 +113,6 @@ fn update_color(
 // VIEW -----------------------------------------------------------------------
 
 fn view(model: Model) -> Element(Msg) {
-  let base0 = model.base0
-  let base7 = model.base7
-
   html.div(
     [
       attribute.styles([
