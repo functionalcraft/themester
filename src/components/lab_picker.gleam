@@ -2,7 +2,6 @@ import data/color
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
-import gleam/io
 import gleam/json
 import lustre
 import lustre/attribute.{type Attribute}
@@ -52,36 +51,31 @@ type Msg {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    ParentChangedValue(color) -> {
-      io.println(
-        "Component: Parent changed value to L="
-        <> float.to_string(color.l)
-        <> " a="
-        <> float.to_string(color.a)
-        <> " b="
-        <> float.to_string(color.b),
-      )
-      #(
-        Model(
-          l: float.to_string(color.l),
-          a: float.to_string(color.a),
-          b: float.to_string(color.b),
-        ),
-        effect.none(),
-      )
+    ParentChangedValue(col) -> {
+      let new_l = case parse_float_permissive(model.l) {
+        Ok(prev_l) if col.l != prev_l -> float.to_string(col.l)
+        _ -> model.l
+      }
+      let new_a = case parse_float_permissive(model.a) {
+        Ok(prev_a) if col.a != prev_a -> float.to_string(col.a)
+        _ -> model.a
+      }
+      let new_b = case parse_float_permissive(model.b) {
+        Ok(prev_b) if col.b != prev_b -> float.to_string(col.b)
+        _ -> model.b
+      }
+
+      #(Model(l: new_l, a: new_a, b: new_b), effect.none())
     }
     SetL(value) -> {
-      io.println("Component: SetL to " <> value)
       let new_model = Model(..model, l: value)
       #(new_model, emit_if_valid(new_model))
     }
     SetA(value) -> {
-      io.println("Component: SetA to " <> value)
       let new_model = Model(..model, a: value)
       #(new_model, emit_if_valid(new_model))
     }
     SetB(value) -> {
-      io.println("Component: SetB to " <> value)
       let new_model = Model(..model, b: value)
       #(new_model, emit_if_valid(new_model))
     }
@@ -103,14 +97,6 @@ fn emit_if_valid(model: Model) -> Effect(Msg) {
     parse_float_permissive(model.b)
   {
     Ok(l), Ok(a), Ok(b) -> {
-      io.println(
-        "Component: Emitting change event with L="
-        <> float.to_string(l)
-        <> " a="
-        <> float.to_string(a)
-        <> " b="
-        <> float.to_string(b),
-      )
       let lab_json =
         json.object([
           #("l", json.float(l)),
@@ -119,17 +105,7 @@ fn emit_if_valid(model: Model) -> Effect(Msg) {
         ])
       effect.event("change", lab_json)
     }
-    _, _, _ -> {
-      io.println(
-        "Component: Invalid values, not emitting: l="
-        <> model.l
-        <> " a="
-        <> model.a
-        <> " b="
-        <> model.b,
-      )
-      effect.none()
-    }
+    _, _, _ -> effect.none()
   }
 }
 
@@ -145,16 +121,19 @@ fn view(model: Model) -> Element(Msg) {
     [
       html.label([], [html.text("L*")]),
       html.input([
+        attribute.class("input__small"),
         attribute.value(model.l),
         event.on_input(SetL),
       ]),
       html.label([], [html.text("a*")]),
       html.input([
+        attribute.class("input__small"),
         attribute.value(model.a),
         event.on_input(SetA),
       ]),
       html.label([], [html.text("b*")]),
       html.input([
+        attribute.class("input__small"),
         attribute.value(model.b),
         event.on_input(SetB),
       ]),

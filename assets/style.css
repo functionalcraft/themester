@@ -9,6 +9,19 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+
+  --base0: #111111;
+  --base1: #2c2c2c;
+  --base2: #484848;
+  --base3: #676767;
+  --base4: #888888;
+  --base5: #a9a9a9;
+  --base6: #cdcdcd;
+  --base7: #f1f1f1;
+
+  --background: var(--base0);
+  --surface: var(--base1);
+  --content: var(--base7);
 }
 
 html, body {
@@ -18,4 +31,12 @@ html, body {
 
 #app {
   display: flex;
+}
+
+input {
+  margin: 0.2rem;
+}
+
+.input__small {
+  width: 2rem;
 }

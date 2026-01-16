@@ -1,19 +1,21 @@
 import components/lab_picker
 import data/color
 import gleam/dynamic/decode
-import gleam/float
 import gleam/int
-import gleam/io
 import gleam/json
 import gleam/string
 import lustre
 import lustre/attribute
+import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 
+@external(javascript, "./themester_ffi.mjs", "set_root_style_property")
+fn set_root_style_property(property: String, value: String) -> Nil
+
 pub fn main() -> Nil {
-  let app = lustre.simple(init, update, view)
+  let app = lustre.application(init, update, view)
 
   let assert Ok(_) = lab_picker.register()
 
@@ -22,83 +24,91 @@ pub fn main() -> Nil {
   Nil
 }
 
+// MODEL ----------------------------------------------------------------------
+
 type ColorState {
   ColorState(lab: color.Lab, rgb: color.Rgb, valid_rgb: Bool)
 }
 
 type Model {
-  Model(base0: ColorState, base7: String)
+  Model(base0: ColorState, base1: ColorState, base7: ColorState)
 }
 
-fn init(_args) -> Model {
-  let base0_lab = color.Lab(10.0, 0.0, 0.0)
+fn init(_args) -> #(Model, Effect(Msg)) {
+  let base0 = color_state(color.Lab(10.0, 0.0, 0.0))
+  let base1 = color_state(color.Lab(20.0, 0.0, 0.0))
 
-  let #(base0_rgb, valid_rgb) = case color.lab_to_rgb(base0_lab) {
-    Ok(c) -> #(c, True)
-    _ -> #(color.Rgb(10, 10, 10), False)
+  let base7 = color_state(color.Lab(90.0, 0.0, 0.0))
+
+  let model = Model(base0: base0, base1: base1, base7: base7)
+
+  #(model, effect.none())
+}
+
+fn color_state(lab: color.Lab) -> ColorState {
+  let #(rgb, valid) = case color.lab_to_rgb_permissive(lab) {
+    Ok(x) -> x
+    Error(_) -> #(color.Rgb(128, 128, 128), False)
   }
 
-  let base0 = ColorState(lab: base0_lab, rgb: base0_rgb, valid_rgb: valid_rgb)
-
-  Model(base0: base0, base7: "#dddddd")
+  ColorState(lab: lab, rgb: rgb, valid_rgb: valid)
 }
+
+// UPDATE ---------------------------------------------------------------------
 
 type Msg {
   SetBase0Lab(color.Lab)
-  SetBase7(String)
+  SetBase1Lab(color.Lab)
+  SetBase7Lab(color.Lab)
 }
 
-fn update(model: Model, msg: Msg) {
+fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    SetBase0Lab(base0_lab) -> {
-      io.println(
-        "Parent: Received SetBase0Lab with L="
-        <> float.to_string(base0_lab.l)
-        <> " a="
-        <> float.to_string(base0_lab.a)
-        <> " b="
-        <> float.to_string(base0_lab.b),
-      )
-      let #(base0_rgb, valid_rgb) = case color.lab_to_rgb(base0_lab) {
-        Ok(c) -> {
-          io.println(
-            "Parent: Lab to RGB conversion succeeded: #"
-            <> int.to_base16(c.r)
-            <> int.to_base16(c.g)
-            <> int.to_base16(c.b),
-          )
-          #(c, True)
-        }
-        _ -> {
-          io.println("Parent: Lab to RGB conversion failed")
-          #(model.base0.rgb, False)
-        }
-      }
-      Model(
-        ..model,
-        base0: ColorState(lab: base0_lab, rgb: base0_rgb, valid_rgb: valid_rgb),
-      )
+    SetBase0Lab(lab) -> {
+      let #(new_state, eff) = update_color(lab, model.base0, "--base0")
+      let new_model = Model(..model, base0: new_state)
+
+      #(new_model, eff)
     }
 
-    SetBase7(val) -> {
-      io.println("Parent: Setting base7 to " <> val)
-      Model(..model, base7: val)
+    SetBase1Lab(lab) -> {
+      let #(new_state, eff) = update_color(lab, model.base1, "--base1")
+      let new_model = Model(..model, base0: new_state)
+
+      #(new_model, eff)
+    }
+
+    SetBase7Lab(lab) -> {
+      let #(new_state, eff) = update_color(lab, model.base7, "--base7")
+      let new_model = Model(..model, base7: new_state)
+
+      #(new_model, eff)
     }
   }
 }
+
+fn update_color(
+  lab: color.Lab,
+  prior: ColorState,
+  css_var: String,
+) -> #(ColorState, Effect(Msg)) {
+  let #(rgb, valid_rgb) = case color.lab_to_rgb(lab) {
+    Ok(c) -> #(c, True)
+    _ -> #(prior.rgb, False)
+  }
+  let new_state = ColorState(lab: lab, rgb: rgb, valid_rgb: valid_rgb)
+
+  let eff =
+    effect.from(fn(_) { set_root_style_property(css_var, rgb_hex(rgb)) })
+
+  #(new_state, eff)
+}
+
+// VIEW -----------------------------------------------------------------------
 
 fn view(model: Model) -> Element(Msg) {
   let base0 = model.base0
   let base7 = model.base7
-
-  io.println(
-    "Parent view: Rendering with base0.lab L="
-    <> float.to_string(base0.lab.l)
-    <> " a="
-    <> float.to_string(base0.lab.a)
-    <> " b="
-    <> float.to_string(base0.lab.b),
-  )
 
   html.div(
     [
@@ -106,8 +116,8 @@ fn view(model: Model) -> Element(Msg) {
         #("width", "100vw"),
         #("height", "100vh"),
         #("display", "flex"),
-        #("background-color", rgb_hex(base0.rgb)),
-        #("color", base7),
+        #("background-color", "var(--background)"),
+        #("color", "var(--content)"),
       ]),
     ],
     [
@@ -118,7 +128,21 @@ fn view(model: Model) -> Element(Msg) {
             #("flex-grow", "1"),
           ]),
         ],
-        [],
+        [
+          html.div(
+            [
+              attribute.styles([
+                #("padding", "1rem"),
+                #("background-color", "var(--surface)"),
+                #("color", "var(--content)"),
+              ]),
+            ],
+            [
+              html.h1([], [html.text("Sample Header")]),
+              html.p([], [html.text("Sample text")]),
+            ],
+          ),
+        ],
       ),
       html.form(
         [
@@ -130,43 +154,55 @@ fn view(model: Model) -> Element(Msg) {
           ]),
         ],
         [
-          html.label([], [
-            html.text("Background ("),
-            html.text(rgb_hex(base0.rgb)),
-            html.text(case base0.valid_rgb {
-              True -> ")"
-              False -> "*)"
-            }),
-          ]),
-          lab_picker.element([
-            attribute.property(
-              "value",
-              json.object([
-                #("l", json.float(base0.lab.l)),
-                #("a", json.float(base0.lab.a)),
-                #("b", json.float(base0.lab.b)),
-              ]),
-            ),
-            event.on("change", {
-              use c <- decode.field("detail", {
-                use l <- decode.field("l", decode.float)
-                use a <- decode.field("a", decode.float)
-                use b <- decode.field("b", decode.float)
-                decode.success(color.Lab(l: l, a: a, b: b))
-              })
-              decode.success(SetBase0Lab(c))
-            }),
-          ]),
-          html.label([], [html.text("Text")]),
-          html.input([
-            attribute.value(base7),
-            event.on_input(SetBase7),
-          ]),
+          view_lab_picker_label("Base 0", model.base0),
+          view_lab_picker(model.base0, SetBase0Lab),
+
+          view_lab_picker_label("Base 1", model.base1),
+          view_lab_picker(model.base1, SetBase1Lab),
+
+          view_lab_picker_label("Base 7", model.base7),
+          view_lab_picker(model.base7, SetBase7Lab),
         ],
       ),
     ],
   )
 }
+
+fn view_lab_picker_label(name: String, col: ColorState) -> Element(Msg) {
+  html.label([], [
+    html.text(name),
+    html.text(" ("),
+    html.text(rgb_hex(col.rgb)),
+    html.text(case col.valid_rgb {
+      True -> ")"
+      False -> "*)"
+    }),
+  ])
+}
+
+fn view_lab_picker(col: ColorState, msg: fn(color.Lab) -> Msg) -> Element(Msg) {
+  lab_picker.element([
+    attribute.property(
+      "value",
+      json.object([
+        #("l", json.float(col.lab.l)),
+        #("a", json.float(col.lab.a)),
+        #("b", json.float(col.lab.b)),
+      ]),
+    ),
+    event.on("change", {
+      use c <- decode.field("detail", {
+        use l <- decode.field("l", decode.float)
+        use a <- decode.field("a", decode.float)
+        use b <- decode.field("b", decode.float)
+        decode.success(color.Lab(l: l, a: a, b: b))
+      })
+      decode.success(msg(c))
+    }),
+  ])
+}
+
+// HELPERS --------------------------------------------------------------------
 
 fn rgb_hex(c: color.Rgb) -> String {
   string.concat([

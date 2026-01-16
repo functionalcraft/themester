@@ -8,7 +8,7 @@ pub type Rgb {
   Rgb(r: Int, g: Int, b: Int)
 }
 
-pub fn lab_to_rgb(lab: Lab) -> Result(Rgb, Nil) {
+pub fn lab_to_rgb_permissive(lab: Lab) -> Result(#(Rgb, Bool), Nil) {
   // Normalize L*a*b* values
   let fy = { lab.l +. 16.0 } /. 116.0
   let fx = fy +. { lab.a /. 500.0 }
@@ -33,10 +33,17 @@ pub fn lab_to_rgb(lab: Lab) -> Result(Rgb, Nil) {
     Ok(r_), Ok(g_), Ok(b_) ->
       // Scale and fit to [0, 255]
       case scale_and_fit(r_), scale_and_fit(g_), scale_and_fit(b_) {
-        Ok(r), Ok(g), Ok(b) -> Ok(Rgb(r, g, b))
-        _, _, _ -> Error(Nil)
+        #(r, True), #(g, True), #(b, True) -> Ok(#(Rgb(r, g, b), True))
+        #(r, _), #(g, _), #(b, _) -> Ok(#(Rgb(r, g, b), True))
       }
     _, _, _ -> Error(Nil)
+  }
+}
+
+pub fn lab_to_rgb(lab: Lab) -> Result(Rgb, Nil) {
+  case lab_to_rgb_permissive(lab) {
+    Ok(#(c, True)) -> Ok(c)
+    _ -> Error(Nil)
   }
 }
 
@@ -61,9 +68,10 @@ fn srgb_encode(c: Float) -> Result(Float, Nil) {
   }
 }
 
-fn scale_and_fit(x: Float) -> Result(Int, Nil) {
+fn scale_and_fit(x: Float) -> #(Int, Bool) {
   case float.truncate(x *. 255.0) {
-    y if y >= 0 && y <= 255 -> Ok(y)
-    _ -> Error(Nil)
+    y if y >= 0 && y <= 255 -> #(y, True)
+    y if y > 255 -> #(255, False)
+    _ -> #(0, False)
   }
 }
