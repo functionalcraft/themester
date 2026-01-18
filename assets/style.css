@@ -20,10 +20,15 @@
   --base6: #cdcdcd;
   --base7: #f1f1f1;
 
-  /* Semantic variables */
+  /* Semantic color variables */
   --background: var(--base0);
   --surface: var(--base1);
+  --elevated: var(--base2);
   --content: var(--base7);
+
+  /* Styling and layout variables */
+  --border-radius: 0.5rem;
+  --padding: 1rem;
 }
 
 html, body {
@@ -35,8 +40,24 @@ html, body {
   display: flex;
 }
 
+.surface {
+  background: var(--surface);
+  color: var(--content);
+  border-radius: var(--border-radius);
+  padding: var(--padding);
+}
+
+.elevated {
+  background: var(--elevated);
+  border-radius: var(--border-radius);
+  padding: var(--padding);
+}
+
 input {
   margin: 0.2rem;
+  padding: 0.2rem;
+  border-radius: var(--border-radius);
+
 }
 
 .input__small {
